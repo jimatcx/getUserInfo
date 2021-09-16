@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# Python program to produce the differences between 2 ASA project status spreadsheets
-
 import configparser
 import json
 import requests
