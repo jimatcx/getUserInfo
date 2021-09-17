@@ -129,7 +129,8 @@ def getUsers(baseUrl, accessToken):
 
 parser = argparse.ArgumentParser(description='Export User Information')
 parser.add_argument("-c","--config",help="The config.ini location if not in the default place" )
-parser.add_argument("-f","--file", default="userData.csv", help="The name of the CSV file to put the output." )
+parser.add_argument("-f","--file", default="userData.csv", help="The name of the CSV file to put the user output. Default is userData.csv" )
+parser.add_argument("-r","--role", help="The name of the CSV file to put the permissions to role mapping.  If not specified, that mapping will not be performed." )
 parser.add_argument("-v", action="count", default=0, help="Verbosity level for console output.  Default is none.")
 args = parser.parse_args()
 if args.v > 0:
@@ -153,7 +154,8 @@ if args.v > 0:
 config = configparser.ConfigParser()
 config.read(configFile)
 
-if args.v > 0:
+if args.v > 1:
+    print("Config file: ")
     for key in config['checkmarx']:
         print("Key:", key, " Value: ", config['checkmarx'][key])
 
@@ -178,28 +180,12 @@ if status != 'OK':
     exit(1)
 
 for team in teamInfo:
-    if args.v > 0:
+    if args.v > 1:
         print("Saving Team:", team['id'], " Name: ", team['fullName'])
     teamDict[team['id']] = {}
     for key in team:
         teamDict[team['id']][key] = team[key]
 
-# Get all the permission names
-if args.v > 0:
-    print ("Retrieving Permissions information...")
-
-permissionDict = {}
-(status, permissionInfo) = getPermissions(config['checkmarx']['base_url'], accessToken)
-if status != 'OK':
-    print("Error in obtaining team information: ", teamInfo)
-    print("Make sure the user: ",config['checkmarx']['username'], " has \"Manage Roles\" and \"Manage Users\" permission in Access Control")
-    exit(1)
-for permission in permissionInfo:
-    if args.v > 0:
-        print("Saving Permission:", permission['id'], " Name: ", permission['name'])
-    permissionDict[permission['id']] = {}
-    for key in permission:
-        permissionDict[permission['id']][key] = permission[key]
 
 # get all the role names and info
 if args.v > 0:
@@ -211,7 +197,7 @@ if status != 'OK':
     print("Make sure the user: ",config['checkmarx']['username'], " has \"Manage Roles\" and \"Manage Users\" permission in Access Control")
     exit(1)
 for role in roleInfo:
-    if args.v > 0:
+    if args.v > 1:
         print("Saving Role:", role['id'], " Name: ", role['name'])
     roleDict[role['id']] = {}
     for key in role:
@@ -229,7 +215,7 @@ if status != 'OK':
     exit(1)
 
 for ap in apInfo:
-    if args.v > 0:
+    if args.v > 1:
         print("Saving AP:", ap['id'], " Name: ", ap['name'])
     apDict[ap['id']] = {}
     for key in ap:
@@ -264,7 +250,7 @@ for user in userInfo:
     roleListStr = ''
     roleList = []
     for userRole in user['roleIds']:
-        if args.v > 0:
+        if args.v > 1:
             print("User Role ID", userRole, " Name: ", roleDict[userRole]['name'])
         roleList.append(roleDict[userRole]['name'])
         if len(roleListStr) == 0:
@@ -294,7 +280,7 @@ for user in userInfo:
 
 
 
-    if args.v > 0:
+    if args.v > 1:
         print(userEntry)
     userList.append(userEntry)
 
@@ -310,6 +296,51 @@ with open(fileOut, 'w', encoding='UTF8', newline='') as f:
 
     # write multiple rows
     writer.writerows(userList)
+
+if not args.role:
+    exit()
+
+# Contiue on if they want to see the roles / permissions mapping
+
+if args.v > 0:
+    print ("Generating roles to permissions mapping...")
+    print ("Retrieving Permissions information...")
+
+permissionDict = {}
+(status, permissionInfo) = getPermissions(config['checkmarx']['base_url'], accessToken)
+if status != 'OK':
+    print("Error in obtaining team information: ", teamInfo)
+    print("Make sure the user: ",config['checkmarx']['username'], " has \"Manage Roles\" and \"Manage Users\" permission in Access Control")
+    exit(1)
+for permission in permissionInfo:
+    if args.v > 1:
+        print("Saving Permission:", permission['id'], " Name: ", permission['name'])
+    permissionDict[permission['id']] = {}
+    for key in permission:
+        permissionDict[permission['id']][key] = permission[key]
+
+roleFileOut = args.role
+rolesHeader =['Permissions\\Roles']
+for role in roleDict:
+        rolesHeader.append(str(roleDict[role]['name']))
+
+with open(roleFileOut, 'w', encoding='UTF8', newline='') as f:
+    writer = csv.writer(f)
+
+    # write the header
+    writer.writerow(rolesHeader)
+    for permission in permissionDict:
+        lineOut = []
+        permName = '\"'+permissionDict[permission]['name']+'\"'
+        lineOut.append(permName)
+        for role in roleDict:
+            if permission in roleDict[role]['permissionIds']:
+                lineOut.append('X')
+            else:
+                lineOut.append(' ')
+
+        writer.writerow(lineOut)
+
 exit()
 
 
