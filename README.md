@@ -13,6 +13,7 @@ The following modules are needed:
 - `pip install argparse`
 - `pip install json`
 - `pip install csv`
+- `pip install configparser`
 
 
 Included is a sample 'config.ini' file.  The default location for this is in your "`home directory/.Checkmarx/`"
