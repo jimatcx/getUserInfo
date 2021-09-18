@@ -7,7 +7,6 @@ import argparse
 import os.path
 import os
 import csv
-
 from urllib.parse import quote
 
 
